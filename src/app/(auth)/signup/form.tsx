@@ -1,13 +1,17 @@
 "use client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { signup } from "@/lib/auth/auth.actions"
 import { SignupSchema, SignupSchemaType } from "@/lib/auth/validation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
 export default function SignupForm(){
     const {register, handleSubmit, formState: {errors}} = useForm<SignupSchemaType>({resolver: zodResolver(SignupSchema)})
-    return <form className="flex flex-col gap-1 [&>input]:text-xl [&>input]:w-96">
+    const submit = async (data: SignupSchemaType)=>{
+        if(data.password === data.confirm_password) signup(data.username, data.password);
+    }
+    return <form className="flex flex-col gap-1 [&>input]:text-xl [&>input]:w-96" onSubmit={handleSubmit(submit)}>
         <h1 className="font-medium text-3xl mb-2">Sign up</h1>
         <Input {...register("username")} placeholder="Username"/>
         <p>{errors.username?.message}</p>
