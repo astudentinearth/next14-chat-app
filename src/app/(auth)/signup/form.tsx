@@ -11,7 +11,7 @@ export default function SignupForm(){
     const submit = async (data: SignupSchemaType)=>{
         if(data.password === data.confirm_password) signup(data.username, data.password);
     }
-    return <form className="flex flex-col gap-1 [&>input]:text-xl [&>input]:w-96" onSubmit={handleSubmit(submit)}>
+    return <form className="flex flex-col gap-1 [&>input]:text-xl" onSubmit={handleSubmit(submit)}>
         <h1 className="font-medium text-3xl mb-2">Sign up</h1>
         <Input {...register("username")} placeholder="Username"/>
         <p>{errors.username?.message}</p>
