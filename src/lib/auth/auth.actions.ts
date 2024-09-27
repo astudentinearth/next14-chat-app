@@ -1,7 +1,7 @@
 "use server"
 
-import { hash } from "@node-rs/argon2";
-import { SignupSchema } from "./validation"
+import { hash, verify } from "@node-rs/argon2";
+import { LoginSchema, SignupSchema } from "./validation"
 import { generateIdFromEntropySize } from "lucia";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
@@ -10,15 +10,17 @@ import { lucia } from ".";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+const hashOpts = {
+    memoryCost: 19456,
+    timeCost: 2,
+    outputLen: 32,
+    parallelism: 1
+};
+
 export async function signup(username: string, password: string){
     const parsed = SignupSchema.safeParse({username, password, confirm_password: password});
     if(parsed.error) return parsed.error.message;
-    const password_hash = await hash(parsed.data.password, {
-        memoryCost: 19456,
-        timeCost: 2,
-        outputLen: 32,
-        parallelism: 1
-    });
+    const password_hash = await hash(parsed.data.password, hashOpts);
     const userId = generateIdFromEntropySize(10);
     const existing = await db.query.userTable.findFirst({where: eq(userTable.username, parsed.data.username)});
     if(existing != null) return "User already exists!";
@@ -26,5 +28,18 @@ export async function signup(username: string, password: string){
     const session = await lucia.createSession(userId, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+    return redirect("/");
+}
+
+export async function login(username:string, password: string){
+    const parsed = LoginSchema.safeParse({username, password});
+    if(parsed.error) return parsed.error.message;
+    const user = await db.query.userTable.findFirst({where: eq(userTable.username, parsed.data.username)});
+    if(!user) return "No such user";
+    const isValidPassword = verify(user.password_hash, parsed.data.password, hashOpts);
+    if(!isValidPassword) return "Incorrect username or password";
+    const sess = await lucia.createSession(user.id, {});
+    const cookie = lucia.createSessionCookie(sess.id);
+    cookies().set(cookie.name, cookie.value, cookie.attributes);
     return redirect("/");
 }
