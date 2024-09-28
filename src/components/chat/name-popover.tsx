@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Input } from "../ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
-import { Button } from "../ui/button";
-import { Hash } from "lucide-react";
 import { renameChannel } from "@/lib/chats/chat.actions";
 import { useQuery } from "@tanstack/react-query";
+import { Hash } from "lucide-react";
+import { useRef, useState } from "react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 export default function NamePopover({name, id}: {name: string, isLoading: boolean, id: string}){
     const inpRef = useRef<HTMLInputElement>(null);
