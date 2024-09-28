@@ -1,16 +1,32 @@
 "use client"
 
+import { Hash, Settings } from "lucide-react"
+import ComposeDialog from "./dialog/compose-dialog"
 import { Button } from "./ui/button"
-import {Settings, SquarePen} from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { getChannels } from "@/lib/chats/chat.actions"
+import { useRouter } from "next/navigation"
 
 export function Sidebar(){
-    return <div className="h-full bg-neutral-900 w-72 rounded-2xl flex flex-col p-2 gap-1 border border-border">
-    <div className="flex items-center flex-shrink-0">
-        <h1 className="font-bold text-xl pl-2 flex-shrink-0 opacity-85">My Chats</h1>
-        <div className="w-full"></div>
-        <Button variant={"topbar"} size={"icon"} className="opacity-75 flex-shrink-0 rounded-xl text-white/75 hover:text-white"><SquarePen size={20}></SquarePen></Button>
-    </div>
-    <div className="h-full"></div>
-    <Button className="gap-2 justify-start rounded-xl pl-2 text-white/75 hover:text-white" variant={"ghost"}><Settings size={20}/>Account and settings</Button>
-  </div>
+	const {data, isLoading, error} = useQuery({
+		queryFn: async ()=>{return await getChannels()},
+		queryKey: ["chat-list"]
+	});
+	const nav = useRouter();
+	return <div className="h-full bg-neutral-900 w-72 rounded-2xl flex flex-col p-2 gap-1 border border-border flex-shrink-0">
+		<div className="flex items-center flex-shrink-0">
+			<h1 className="font-bold text-xl pl-2 flex-shrink-0 opacity-85">Chat</h1>
+			<div className="w-full"></div>
+			<ComposeDialog/>
+		</div>
+		<Button className="gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white" variant={"ghost"}><Settings size={20}/>Account and settings</Button>
+		<div className="h-full">
+			{isLoading ? "Loading" : 
+			data?.map((c)=><Button key={c.id} onClick={()=>{nav.push(`/chat/${c.id}`)}}
+			className="gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white" 
+			variant={"ghost"}><Hash size={20}/>{c.name}</Button>)
+			}
+			
+		</div>
+	</div>
 }
