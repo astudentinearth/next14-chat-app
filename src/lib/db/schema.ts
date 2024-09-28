@@ -44,7 +44,16 @@ export const messagesTable = pgTable("message", {
 	channelId: text("channel_id").references(() => channelsTable.id),
 	sender: text("sender_id").references(() => userTable.id),
 	content: text("content").notNull(),
-	sentAt: timestamp("sent_at").notNull()
+	sentAt: timestamp("sent_at", { mode: "date" }).notNull()
+});
+
+export const invitesTable = pgTable("invite", {
+	id: text("id").primaryKey(),
+	channelId: text("channel_id")
+		.references(() => channelsTable.id)
+		.notNull(),
+	expires: timestamp("expires_at", { mode: "date" }),
+	oneTime: boolean("oneTime")
 });
 
 export type User = typeof userTable.$inferSelect;
@@ -58,3 +67,6 @@ export type NewChannel = typeof channelsTable.$inferInsert;
 
 export type Message = typeof messagesTable.$inferSelect;
 export type NewMessage = typeof messagesTable.$inferInsert;
+
+export type Invite = typeof invitesTable.$inferSelect;
+export type NewInvite = typeof invitesTable.$inferInsert;
