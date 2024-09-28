@@ -5,7 +5,7 @@ import { getUser } from "../auth";
 import { db } from "../db";
 import { Channel, channelsTable } from "../db/schema";
 import { redirect } from "next/navigation";
-import { arrayContains, inArray } from "drizzle-orm";
+import { arrayContains, eq, inArray } from "drizzle-orm";
 
 export async function createDirectMessageChannel(recipientUserId: string) {}
 
@@ -59,4 +59,28 @@ export async function getChannels() {
 		where: arrayContains(channelsTable.participants, [user.id])
 	});
 	return result;
+}
+
+export async function getChannelInfo(id: string) {
+	const user = await getUser();
+	if (!user) return null;
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, id)
+	});
+	return channel ?? null;
+}
+
+export async function renameChannel(id: string, newName: string) {
+	const user = await getUser();
+	if (user == null) return "Unauthorized: not signed in";
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, id)
+	});
+	if (channel?.owner !== user.id)
+		return "Unauthorized: you don't own this channel.";
+	await db
+		.update(channelsTable)
+		.set({ name: newName })
+		.where(eq(channelsTable.id, id));
+	return "Success";
 }
