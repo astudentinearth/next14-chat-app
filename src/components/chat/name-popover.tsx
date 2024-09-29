@@ -9,9 +9,8 @@ import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Channel } from "@/lib/db/schema";
 
-export default function NamePopover({name, id}: {name: string, isLoading: boolean, id: string}){
+export default function NamePopover({name, id, isLoading}: {name: string, isLoading: boolean, id: string}){
     const inpRef = useRef<HTMLInputElement>(null);
-    const {isLoading, refetch} = useQuery<Channel | null>({queryKey: ["current-channel-info"]})
     const {refetch: reloadChannels, data: channels} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
     const c = channels?.find((item)=>item.id===id);
     const [open, setOpen] = useState(false);
@@ -20,7 +19,6 @@ export default function NamePopover({name, id}: {name: string, isLoading: boolea
         let newName = inpRef.current.value;
         if(newName.trim()==="") newName = "unnamed channel";
         console.log(await renameChannel(id, newName));
-        await refetch();
         await reloadChannels();
     }
     return <Popover modal open={open} onOpenChange={setOpen}>
