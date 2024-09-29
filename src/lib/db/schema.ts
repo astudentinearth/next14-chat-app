@@ -36,7 +36,10 @@ export const channelsTable = pgTable("channel", {
 		withTimezone: true,
 		mode: "date"
 	}).notNull(),
-	isDirectMessage: boolean("is_dm")
+	isDirectMessage: boolean("is_dm"),
+	dmUsernames: varchar("dm_usernames", { length: 64 })
+		.references(() => userTable.username)
+		.array()
 });
 
 export const messagesTable = pgTable("message", {

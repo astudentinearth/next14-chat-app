@@ -1,16 +1,60 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { arrayContains, eq } from "drizzle-orm";
+import { and, arrayContains, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "../auth";
 import { db } from "../db";
-import { Channel, channelsTable, Invite, invitesTable } from "../db/schema";
+import {
+	Channel,
+	channelsTable,
+	Invite,
+	invitesTable,
+	userTable
+} from "../db/schema";
+import { produce } from "immer";
 
-export async function createDirectMessageChannel(recipientUserId: string) {}
+export async function createDirectMessageChannel(recipientUserId: string) {
+	const user = await getUser();
+	if (!user) return "Unauthorized: you are not logged in";
+	const recipient = await db.query.userTable.findFirst({
+		where: eq(userTable.id, recipientUserId)
+	});
+	if (!recipient) return "No user with this name exists";
+	const id = randomUUID();
+	await db.insert(channelsTable).values({
+		id,
+		owner: user.id,
+		creationTime: new Date(),
+		isDirectMessage: true,
+		participants: [user.id, recipientUserId],
+		dmUsernames: [user.username, recipient.username]
+	});
+	return redirect(`/chat/${id}`);
+}
 
-export async function getDirectMessageChannel(recipientUserId: string) {}
+export async function loadDirectMessageChannel(recipientUsername: string) {
+	const user = await getUser();
+	if (!user) return "Unauthorized: you are not logged in";
+	if (user.username === recipientUsername) return "You can't text yourself";
+	const dest = await db.query.userTable.findFirst({
+		where: eq(userTable.username, recipientUsername)
+	});
+	if (!dest) return "No such user";
+	const recipientUserId: string = dest.id;
+	const channel = await db.query.channelsTable.findFirst({
+		where: and(
+			arrayContains(channelsTable.participants, [
+				user.id,
+				recipientUserId
+			]),
+			eq(channelsTable.isDirectMessage, true)
+		)
+	});
+	if (!channel) return await createDirectMessageChannel(recipientUserId);
+	else return redirect(`/chat/${channel.id}`);
+}
 
 /**
  *
@@ -59,7 +103,15 @@ export async function getChannels() {
 	const result = await db.query.channelsTable.findMany({
 		where: arrayContains(channelsTable.participants, [user.id])
 	});
-	return result;
+	const final = produce(result, (draft) => {
+		for (const c of draft) {
+			if (!c.isDirectMessage || c.dmUsernames == null) continue;
+			const recipient = c.dmUsernames.filter((n) => n !== user.username);
+			if (recipient.length !== 1) continue;
+			c.name = `${recipient[0]}`;
+		}
+	});
+	return final;
 }
 
 export async function getChannelInfo(id: string) {
@@ -68,6 +120,17 @@ export async function getChannelInfo(id: string) {
 	const channel = await db.query.channelsTable.findFirst({
 		where: eq(channelsTable.id, id)
 	});
+	if (
+		channel != null &&
+		channel.isDirectMessage &&
+		channel.dmUsernames != null
+	) {
+		const recipient = channel.dmUsernames.filter(
+			(n) => n !== user.username
+		);
+		if (recipient.length !== 1) return channel;
+		return { ...channel, name: recipient[0] };
+	}
 	return channel ?? null;
 }
 
@@ -127,7 +190,20 @@ export async function isValidInvite(invite: Invite) {
 	else return true;
 }
 
-export async function invalidateInvite(id: string) {}
+export async function invalidateInvite(inviteId: string) {
+	const user = await getUser();
+	if (user == null) return "Unauthorized: not signed in";
+	const invite = await db.query.invitesTable.findFirst({
+		where: eq(invitesTable.id, inviteId[0])
+	});
+	if (!invite) return "No such invite";
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, invite.channelId)
+	});
+	if (!channel) return "No such channel";
+	if (channel.owner !== user.id) return "You don't own this channel";
+	await db.delete(invitesTable).where(eq(invitesTable.id, inviteId));
+}
 
 export async function listInvites(channelId: string) {
 	const user = await getUser();
