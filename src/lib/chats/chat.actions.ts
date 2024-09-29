@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { and, arrayContains, eq } from "drizzle-orm";
+import { and, arrayContains, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "../auth";
@@ -11,6 +11,7 @@ import {
 	channelsTable,
 	Invite,
 	invitesTable,
+	messagesTable,
 	userTable
 } from "../db/schema";
 import { produce } from "immer";
@@ -84,18 +85,55 @@ export async function createChannel(name: string) {
 }
 
 /**
- *
- * @param count maximum number of messages to load
- * @param after number of messages to skip before loading more
+ * Gets messages from a channel
+ * @param count maximum number of messages to load - defaults to 15
+ * @param after number of messages to skip before loading more - defaults to 0
  */
-export async function loadMessages(count?: number, after?: number) {}
+export async function loadMessages(
+	channelId: string,
+	count?: number,
+	after?: number
+) {
+	const user = await getUser();
+	if (!user) return "Unauthorized: you are not logged in";
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, channelId)
+	});
+	if (!channel) return "No such channel";
+	if (!channel.participants?.includes(user.id))
+		return "You are not a member of this conversation";
+	const messages = await db.query.messagesTable.findMany({
+		where: eq(messagesTable.channelId, channelId),
+		orderBy: desc(messagesTable.sentAt),
+		limit: count ?? 15,
+		offset: after
+	});
+	return messages;
+}
 
 /**
  *
  * @param channelId id of the channel to send the message to
  * @param content contents of the message
  */
-export async function sendMessage(channelId: string, content: string) {}
+export async function sendMessage(channelId: string, content: string) {
+	const user = await getUser();
+	if (!user) return "Unauthorized: you are not logged in";
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, channelId)
+	});
+	if (!channel) return "No such channel";
+	if (!channel.participants?.includes(user.id))
+		return "You are not a member of this conversation";
+	await db.insert(messagesTable).values({
+		id: randomUUID(),
+		channelId,
+		content,
+		sender: user.id,
+		sentAt: new Date()
+	});
+	//TODO: Notify via socket
+}
 
 export async function getChannels() {
 	const user = await getUser();

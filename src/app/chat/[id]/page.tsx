@@ -9,7 +9,7 @@ export default async function ChatPage({params}: {params: {id: string}}) {
   return (
     <div className="w-full h-full absolute flex p-2 gap-2">
       <Sidebar/>
-      {user == null ? <></> : <ChatPanel id={params.id}/>}
+      {user == null ? <></> : <ChatPanel id={params.id} userId={user.id} username={user.username}/>}
     </div>
   );
 }

@@ -11,8 +11,9 @@ import { Channel } from "@/lib/db/schema";
 
 export default function NamePopover({name, id}: {name: string, isLoading: boolean, id: string}){
     const inpRef = useRef<HTMLInputElement>(null);
-    const {isLoading, refetch, data: c} = useQuery<Channel | null>({queryKey: ["current-channel-info"]})
-    const {refetch: reloadChannels} = useQuery({queryKey: ["chat-list"]});
+    const {isLoading, refetch} = useQuery<Channel | null>({queryKey: ["current-channel-info"]})
+    const {refetch: reloadChannels, data: channels} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
+    const c = channels?.find((item)=>item.id===id);
     const [open, setOpen] = useState(false);
     const rename = async () => {
         if(!inpRef.current) return;
