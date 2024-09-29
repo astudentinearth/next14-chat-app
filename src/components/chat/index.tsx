@@ -45,7 +45,7 @@ export default function ChatPanel({id, userId, username}: {id: string, userId: s
             {(messages instanceof Array) ? messages.toReversed().map((m)=><div key={m.id} className="flex">
                 {userId === m.sender && <div className="flex-grow"></div>}
                 <div className={cn("flex flex-col shrink-0 bg-neutral-900 p-3 w-fit rounded-2xl border border-border drop-shadow-md max-w-[70vw]", userId === m.sender && "bg-primary text-primary-foreground")}>
-                    <span className="font-bold block">{m.sender}</span>
+                    {(userId !== m.sender && !channel?.isDirectMessage) && <span className="font-bold block">{m.senderUsername}</span>}
                     <span className="block">{m.content}</span>
                 </div>
             </div>) : messages}
