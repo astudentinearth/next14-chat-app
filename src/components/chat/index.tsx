@@ -20,10 +20,10 @@ export default function ChatPanel({id}: {id: string}){
     return  <div className="h-full w-full bg-neutral-900/50 rounded-2xl border border-border p-2 flex flex-col">
         <div className="flex gap-2 [&>button]:flex-shrink-0">
             <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Settings2 size={20}/></Button>
-            <InvitePopover id={id}/>
+            {channel?.isDirectMessage ? <></> : <InvitePopover id={id}/>}
             <NamePopover name={channel?.name ?? ""} isLoading={isLoading} id={id}/>
             <div className="flex-grow"></div>
-            <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>
+            {channel?.isDirectMessage ? <></> : <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>}
         </div>
         <div className="h-full"></div>
         <div className="flex gap-2">
