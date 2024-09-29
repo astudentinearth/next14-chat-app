@@ -36,6 +36,13 @@
       "when": 1727625743663,
       "tag": "0004_legal_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1727625904727,
+      "tag": "0005_bumpy_kronos",
+      "breakpoints": true
     }
   ]
 }

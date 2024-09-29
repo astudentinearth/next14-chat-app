@@ -48,7 +48,9 @@ export const messagesTable = pgTable("message", {
 	sender: text("sender_id").references(() => userTable.id),
 	content: text("content").notNull(),
 	sentAt: timestamp("sent_at", { mode: "date" }).notNull(),
-	senderUsername: varchar("text").references(() => userTable.username)
+	senderUsername: varchar("sender_username").references(
+		() => userTable.username
+	)
 });
 
 export const invitesTable = pgTable("invite", {
