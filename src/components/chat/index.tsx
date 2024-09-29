@@ -41,10 +41,10 @@ export default function ChatPanel({id, userId, username}: {id: string, userId: s
             <div className="flex-grow"></div>
             {channel?.isDirectMessage ? <></> : <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>}
         </div>
-        <div className="h-full flex flex-col gap-2 pt-2 overflow-y-auto my-2">
+        <div className="h-full flex flex-col gap-2 pt-2 overflow-y-auto my-2 justify-end">
             {(messages instanceof Array) ? messages.toReversed().map((m)=><div key={m.id} className="flex">
                 {userId === m.sender && <div className="flex-grow"></div>}
-                <div className={cn("flex flex-col shrink-0 bg-neutral-900 p-3 w-fit rounded-2xl border border-border drop-shadow-md max-w-[70vw]", userId === m.sender && "bg-primary text-primary-foreground")}>
+                <div className={cn("flex flex-col shrink-0 bg-neutral-900 p-3 w-fit rounded-2xl border border-border drop-shadow-md max-w-[70vw]", userId === m.sender && "bg-primary/85 text-primary-foreground border-none")}>
                     {(userId !== m.sender && !channel?.isDirectMessage) && <span className="font-bold block">{m.senderUsername}</span>}
                     <span className="block">{m.content}</span>
                 </div>
