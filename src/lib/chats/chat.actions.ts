@@ -130,7 +130,8 @@ export async function sendMessage(channelId: string, content: string) {
 		channelId,
 		content,
 		sender: user.id,
-		sentAt: new Date()
+		sentAt: new Date(),
+		senderUsername: user.username
 	});
 	//TODO: Notify via socket
 }
