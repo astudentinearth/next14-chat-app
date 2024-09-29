@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { and, arrayContains, desc, eq } from "drizzle-orm";
+import { and, arrayContains, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "../auth";
@@ -159,6 +159,8 @@ export async function getChannelInfo(id: string) {
 	const channel = await db.query.channelsTable.findFirst({
 		where: eq(channelsTable.id, id)
 	});
+	if (!channel?.participants?.includes(user.id))
+		return "You are not a member of this conversation";
 	if (
 		channel != null &&
 		channel.isDirectMessage &&
@@ -171,6 +173,22 @@ export async function getChannelInfo(id: string) {
 		return { ...channel, name: recipient[0] };
 	}
 	return channel ?? null;
+}
+
+export async function getChannelParticipants(channelId: string) {
+	const user = await getUser();
+	if (!user) return null;
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, channelId)
+	});
+	if (!channel) return "No such channel";
+	if (!channel.participants?.includes(user.id))
+		return "You are not a member of this conversation";
+	const users = await db.query.userTable.findMany({
+		where: inArray(userTable.id, channel.participants),
+		columns: { password_hash: false }
+	});
+	return users;
 }
 
 export async function renameChannel(id: string, newName: string) {
