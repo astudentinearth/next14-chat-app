@@ -7,8 +7,9 @@ import { useQuery } from "@tanstack/react-query"
 import { getChannels } from "@/lib/chats/chat.actions"
 import { useRouter } from "next/navigation"
 import NewChatDropdown from "./dialog/new-chat-dropdown"
+import { cn } from "@/lib/utils"
 
-export function Sidebar(){
+export function Sidebar({id}: {id?: string}){
 	const {data, isLoading, error} = useQuery({
 		queryFn: async ()=>{return await getChannels()},
 		queryKey: ["chat-list"]
@@ -20,14 +21,14 @@ export function Sidebar(){
 			<div className="w-full"></div>
 			<NewChatDropdown/>
 		</div>
-		<Button className="gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white" variant={"ghost"}><Settings size={20}/>Account and settings</Button>
-		<div className="h-full">
+		<div className="h-full flex gap-1 flex-col overflow-y-auto">
 			{isLoading ? "Loading" : 
 			data?.map((c)=><Button key={c.id} onClick={()=>{nav.push(`/chat/${c.id}`)}}
-			className="gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white" 
+			className={cn("gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white", id===c.id && "bg-secondary/50")}
 			variant={"ghost"}>{c.isDirectMessage ? <UserRound size={20}/> : <Hash size={20}/>}{c.name}</Button>)
 			}
 			
 		</div>
+		<Button className="gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white" variant={"ghost"}><Settings size={20}/>Account and settings</Button>
 	</div>
 }
