@@ -277,7 +277,8 @@ export async function joinChannel(inviteURL: string) {
 		return redirect(`/chat/${channel.id}`); // user already in channel
 	await db
 		.update(channelsTable)
-		.set({ participants: [...(channel.participants ?? []), user.id] });
+		.set({ participants: [...(channel.participants ?? []), user.id] })
+		.where(eq(channelsTable.id, invite.channelId));
 	if (invite.oneTime)
 		await db.delete(invitesTable).where(eq(invitesTable.id, inviteId[0])); // delete invite if it was single use
 	return redirect(`/chat/${channel.id}`);
