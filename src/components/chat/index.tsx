@@ -12,16 +12,25 @@ import NamePopover from "./name-popover"
 import { getUser } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { Channel } from "@/lib/db/schema"
+import {io} from "socket.io-client"
+import { useRouter } from "next/navigation"
 
-export default function ChatPanel({id, userId, username}: {id: string, userId: string, username: string}){
+export default function ChatPanel({id, userId, username, hostname}: {id: string, userId: string, username: string, hostname:string}){
     const msgbox = useRef<HTMLInputElement>(null);
     const {isEmpty} = useEmptyInput(msgbox);
+    const router = useRouter();
+
     const {data: messages, isLoading: msgLoading} = useQuery({
         queryFn: async ()=>await loadMessages(id),
         queryKey: ["current-channel-messages", id],
     })
+    
     const {data: channels, isLoading} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
     const channel = channels?.find((item)=>item.id===id);
+    
+    const socket = io(`http://${hostname}`);
+    socket.connect();
+
     const send = async () => {
         if(!msgbox.current || !channel) return;
         if(msgbox.current.value.trim()=="") return;
@@ -29,6 +38,7 @@ export default function ChatPanel({id, userId, username}: {id: string, userId: s
         await sendMessage(channel.id, msg);
         msgbox.current.value = "";
     }
+    
     return  <div className={cn("h-full w-full bg-neutral-900/50 rounded-2xl border border-border p-2 flex flex-col", msgLoading && "justify-center items-center")}>
         {msgLoading ? <div>
             <LoaderCircle size={32} className="opacity-50 animate-spin"/>
