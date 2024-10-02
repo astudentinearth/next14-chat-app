@@ -16,6 +16,7 @@ import NamePopover from "./name-popover"
 
 export default function ChatPanel({id, userId, username, hostname}: {id: string, userId: string, username: string, hostname:string}){
     const msgbox = useRef<HTMLInputElement>(null);
+    const chatView = useRef<HTMLDivElement>(null);
     const {isEmpty} = useEmptyInput(msgbox);
     const router = useRouter();
 
@@ -23,12 +24,17 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
     const [count, setCount] = useState(15);
 
     const {data: messages, isLoading: msgLoading} = useQuery({
-        queryFn: async ()=>await loadMessages(id, count),
+        queryFn: async ()=>await loadMessages(id, count, count-15),
         queryKey: ["current-channel-messages", id, count],
     })
     
     useEffect(()=>{
-        if(Array.isArray(messages)) setMsgState(messages);
+        if(Array.isArray(messages)){ 
+            if(count===15) setMsgState(messages);
+            else{
+                msgState.push(...messages);
+            }
+        }
     }, [messages])
 
     const {data: channels, isLoading} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
@@ -50,6 +56,12 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
         })
         return ()=>{socket.disconnect()}
     }, [socket, id])
+
+    useEffect(()=>{
+        if(chatView.current){
+            chatView.current.scrollTo(0, chatView.current.scrollHeight);
+        }
+    }, [msgState]);
 
     const send = async () => {
         if(!msgbox.current || !channel) return;
@@ -75,7 +87,7 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             <div className="flex-grow"></div>
             {channel?.isDirectMessage ? <></> : <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>}
         </div>
-        <div className="h-full flex flex-col flex-nowrap gap-2 pt-2 overflow-y-auto my-2 bottom-align">
+        <div ref={chatView} className="h-full flex flex-col flex-nowrap gap-2 pt-2 overflow-y-auto my-2 bottom-align">
             <Button onClick={loadMore} variant={"outline"}>Load more</Button>
             {(messages instanceof Array) ? msgState.toReversed().map((m)=><div key={m.id} className="flex">
                 {userId === m.sender && <div className="flex-grow"></div>}
@@ -86,7 +98,9 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             </div>) : messages}
         </div>
         <div className="flex gap-2 bottom-4 right-4">
-            <Input ref={msgbox} aria-label="message" id="message-input" type="text" placeholder="Type a message" className="rounded-lg bg-neutral-900 border border-border"/>
+            <Input onKeyDown={(e)=>{
+                if(e.key=="Enter") send();
+            }} ref={msgbox} aria-label="message" id="message-input" type="text" placeholder="Type a message" className="rounded-lg bg-neutral-900 border border-border"/>
             <Button onClick={send} variant={"default"} className="p-0 w-10 h-10 text-primary-foreground rounded-lg flex-shrink-0"><Send size={20}/></Button>
         </div>
         </>}
