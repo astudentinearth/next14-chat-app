@@ -125,14 +125,16 @@ export async function sendMessage(channelId: string, content: string) {
 	if (!channel) return "No such channel";
 	if (!channel.participants?.includes(user.id))
 		return "You are not a member of this conversation";
-	await db.insert(messagesTable).values({
+	const msg = {
 		id: randomUUID(),
 		channelId,
 		content,
 		sender: user.id,
 		sentAt: new Date(),
 		senderUsername: user.username
-	});
+	};
+	await db.insert(messagesTable).values(msg);
+	//io.to(channelId).emit("new_message", msg);
 	//TODO: Notify via socket
 }
 

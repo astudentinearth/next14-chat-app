@@ -12,13 +12,15 @@ const handler = app.getRequestHandler();
 
 declare module "socket.io" {
 	interface Socket {
-		user?: { username: string; userId: string };
+		user?: { username: string; userId: string; sessionId: string };
 	}
 }
 
+let io: Server;
+
 app.prepare().then(() => {
 	const httpServer = createServer(handler);
-	const io = new Server(httpServer, {
+	io = new Server(httpServer, {
 		cors: {
 			origin: `http://${hostname}:${port}`
 		}
@@ -53,7 +55,7 @@ app.prepare().then(() => {
 				username: string;
 				userId: string;
 			};
-			socket.user = { username, userId };
+			socket.user = { username, userId, sessionId: auth_session };
 			next();
 		} catch (error) {
 			console.error("Something went wrong: ", error);
@@ -61,10 +63,45 @@ app.prepare().then(() => {
 		}
 	});
 	io.on("connection", (socket) => {
-		console.log(
-			socket.user?.username,
-			"connected from: ",
-			socket.handshake.address
+		socket.on("join_channel", async (id) => {
+			console.log(`${socket.user?.username} is trying to join ${id}`);
+			const res = await fetch(
+				`http://${hostname}:${port}/api/can-user-join`,
+				{
+					body: JSON.stringify({
+						sessionId: socket.user?.sessionId,
+						channelId: id
+					}),
+					method: "POST"
+				}
+			);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const result: any = await res.json();
+			if (result.allow !== true) return result.error;
+			else {
+				socket.join(id);
+			}
+		});
+		socket.on(
+			"send_message",
+			async (channelId: string, content: string) => {
+				const res = await fetch(
+					`http://${hostname}:${port}/api/send-message`,
+					{
+						body: JSON.stringify({
+							sessionId: socket.user?.sessionId,
+							channelId,
+							content
+						}),
+						method: "POST"
+					}
+				);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const body: any = await res.json();
+				if (res.status === 200 && "msg" in body) {
+					io.to(channelId).emit("new_message", body.msg);
+				}
+			}
 		);
 	});
 

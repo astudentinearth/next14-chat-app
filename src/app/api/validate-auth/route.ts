@@ -2,13 +2,12 @@ import { lucia } from "@/lib/auth";
 import cors from "@/lib/cors";
 
 const headers = {
-	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Origin": "http://localhost:*",
 	"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 	"Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
 export async function POST(req: Request) {
-	console.log("Validating");
 	const body = await req.json();
 	if ("sessionId" in body) {
 		const { user, session } = await lucia.validateSession(body.sessionId);
