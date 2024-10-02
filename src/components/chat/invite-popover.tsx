@@ -7,7 +7,7 @@ import { useState } from "react"
 import { Checkbox } from "../ui/checkbox"
 import { Label } from "../ui/label"
 import { useQuery } from "@tanstack/react-query"
-import { createInvite, listInvites } from "@/lib/chats/chat.actions"
+import { createInvite, invalidateInvite, listInvites } from "@/lib/chats/chat.actions"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip"
 
 type DurationsType = "30m" | "1h" | "6h" | "24h" | "never";
@@ -44,15 +44,17 @@ export default function InvitePopover({id}: {id: string}){
         if(isLoading) return "Loading";
         if(error) return "Something went wrong";
         if(invites instanceof Array){
-            return invites.map((invite)=><Tooltip key={invite.id}>
+            return invites.map((invite)=><Tooltip delayDuration={400} key={invite.id}>
                 <div className="grid grid-cols-[1fr_80px_40px] gap-1 w-[332px] items-center">
                     <TooltipTrigger asChild>
                         <span onClick={()=>copyLink(invite.id)} className="ellipsis overflow-hidden whitespace-nowrap p-2 border border-border rounded-lg select-none cursor-pointer hover:border-primary transition-colors">{invite.id}</span>
                     </TooltipTrigger>
                     <span className="place-self-center">{invite.expires==null ? "Never" : calcRemaining(invite.expires)}</span>
-                    <Button variant={"ghost"} className="w-10 h-10 p-0 text-secondary-foreground/75 hover:text-secondary-foreground/100"><Trash2 size={18}/></Button>
+                    <Button onClick={async ()=>{
+                        await invalidateInvite(invite.id); 
+                        await refetch()}} variant={"ghost"} className="w-10 h-10 p-0 text-secondary-foreground/75 hover:text-secondary-foreground/100"><Trash2 size={18}/></Button>
                 </div>
-                <TooltipContent className="bg-neutral-950 rounded-full pointer-events-none link-tooltip border-2 border-border drop-shadow-lg">
+                <TooltipContent  className="bg-neutral-950 rounded-full pointer-events-none link-tooltip border-2 border-border drop-shadow-lg">
                     <p>Click to copy</p>
                 </TooltipContent>
             </Tooltip>)

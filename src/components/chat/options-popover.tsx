@@ -9,7 +9,7 @@ import { leaveChannel } from "@/lib/chats/chat.actions";
 export function OptionsPopover({channel}: {channel: Channel}){
 
     return <Popover>
-        <PopoverTrigger>
+        <PopoverTrigger asChild>
             <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Settings2 size={20}/></Button>
         </PopoverTrigger>
         <PopoverContent asChild className="p-1 w-fit rounded-xl">

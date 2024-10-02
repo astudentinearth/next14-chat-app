@@ -253,7 +253,7 @@ export async function invalidateInvite(inviteId: string) {
 	const user = await getUser();
 	if (user == null) return "Unauthorized: not signed in";
 	const invite = await db.query.invitesTable.findFirst({
-		where: eq(invitesTable.id, inviteId[0])
+		where: eq(invitesTable.id, inviteId)
 	});
 	if (!invite) return "No such invite";
 	const channel = await db.query.channelsTable.findFirst({
