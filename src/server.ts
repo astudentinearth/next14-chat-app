@@ -39,7 +39,6 @@ app.prepare().then(() => {
 						"Authentication error: no session ID was found in cookie."
 					)
 				);
-			console.log(`http://${hostname}:${port}/api/validate-auth`);
 			const req = await fetch(
 				`http://${hostname}:${port}/api/validate-auth`,
 				{

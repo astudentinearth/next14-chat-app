@@ -20,11 +20,11 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
     const router = useRouter();
 
     const [msgState, setMsgState] = useState<Message[]>([]);
-
+    const [count, setCount] = useState(15);
 
     const {data: messages, isLoading: msgLoading} = useQuery({
-        queryFn: async ()=>await loadMessages(id),
-        queryKey: ["current-channel-messages", id],
+        queryFn: async ()=>await loadMessages(id, count),
+        queryKey: ["current-channel-messages", id, count],
     })
     
     useEffect(()=>{
@@ -48,6 +48,7 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             newState.unshift(msg);
             setMsgState(newState);
         })
+        return ()=>{socket.disconnect()}
     }, [socket, id])
 
     const send = async () => {
@@ -58,6 +59,10 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
         msgbox.current.value = "";
     }
     
+    const loadMore = ()=>{
+        setCount(count + 15);
+    }
+
     return  <div className={cn("h-full w-full bg-neutral-900/50 rounded-2xl border border-border p-2 flex flex-col", msgLoading && "justify-center items-center")}>
         {msgLoading ? <div>
             <LoaderCircle size={32} className="opacity-50 animate-spin"/>
@@ -70,7 +75,8 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             <div className="flex-grow"></div>
             {channel?.isDirectMessage ? <></> : <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>}
         </div>
-        <div className="h-full flex flex-col gap-2 pt-2 overflow-y-auto my-2 justify-end">
+        <div className="h-full flex flex-col flex-nowrap gap-2 pt-2 overflow-y-auto my-2 bottom-align">
+            <Button onClick={loadMore} variant={"outline"}>Load more</Button>
             {(messages instanceof Array) ? msgState.toReversed().map((m)=><div key={m.id} className="flex">
                 {userId === m.sender && <div className="flex-grow"></div>}
                 <div className={cn("flex flex-col shrink-0 bg-neutral-900 p-3 w-fit rounded-2xl border border-border drop-shadow-md max-w-[70vw]", userId === m.sender && "bg-primary/85 text-primary-foreground border-none")}>
