@@ -303,3 +303,19 @@ export async function joinChannel(inviteURL: string) {
 		await db.delete(invitesTable).where(eq(invitesTable.id, inviteId[0])); // delete invite if it was single use
 	return redirect(`/chat/${channel.id}`);
 }
+
+export async function leaveChannel(channelId: string) {
+	const user = await getUser();
+	if (user == null) return "Unauthorized: not signed in";
+	const channel = await db.query.channelsTable.findFirst({
+		where: eq(channelsTable.id, channelId)
+	});
+	if (!channel) return "Not found: channel does not exist";
+	await db
+		.update(channelsTable)
+		.set({
+			participants: channel.participants?.filter((n) => n !== user.id)
+		})
+		.where(eq(channelsTable.id, channelId));
+	return redirect("/");
+}

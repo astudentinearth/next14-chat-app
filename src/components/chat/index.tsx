@@ -14,6 +14,7 @@ import { Input } from "../ui/input"
 import InvitePopover from "./invite-popover"
 import NamePopover from "./name-popover"
 import { MembersPopover } from "./members-popover"
+import { OptionsPopover } from "./options-popover"
 
 export default function ChatPanel({id, userId, username, hostname}: {id: string, userId: string, username: string, hostname:string}){
     const msgbox = useRef<HTMLInputElement>(null);
@@ -83,8 +84,8 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             </div> : 
             <>
                 <div className="flex gap-2 [&>button]:flex-shrink-0 ">
-                    <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Settings2 size={20}/></Button>
-                    {channel?.isDirectMessage ? <></> : <InvitePopover id={id}/>}
+                    {channel.isDirectMessage ? <></> : <OptionsPopover channel={channel}/>}
+                    {channel?.isDirectMessage || channel.owner !==userId ? <></> : <InvitePopover id={id}/>}
                     <NamePopover name={channel?.name ?? ""} isLoading={isLoading} id={id}/>
                     <div className="flex-grow"></div>
                     {channel?.isDirectMessage ? <></> : <MembersPopover channel={channel}/>}
