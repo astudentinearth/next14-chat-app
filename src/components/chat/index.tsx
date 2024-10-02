@@ -42,20 +42,20 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
     
     const socket = io(`http://${hostname}`);
     
-    useEffect(()=>{
-        socket.connect();
-        socket.emit("join_channel", id);
-        socket.on("new_message", (data)=>{
-            const msg = data as Message;
-            for(const m of msgState){
-                if(m.id===msg.id) return;
-            }
-            const newState = [...msgState];
-            newState.unshift(msg);
-            setMsgState(newState);
-        })
-        return ()=>{socket.disconnect()}
-    }, [socket, id])
+     useEffect(()=>{
+         socket.connect();
+         socket.emit("join_channel", id);
+         socket.on("new_message", (data)=>{
+             const msg = data as Message;
+             for(const m of msgState){
+                 if(m.id===msg.id) return;
+             }
+             const newState = [...msgState];
+             newState.unshift(msg);
+             setMsgState(newState);
+         })
+         return ()=>{socket.disconnect()}
+     }, [socket, id])
 
     useEffect(()=>{
         if(chatView.current){
@@ -87,7 +87,7 @@ export default function ChatPanel({id, userId, username, hostname}: {id: string,
             <div className="flex-grow"></div>
             {channel?.isDirectMessage ? <></> : <Button variant={"topbar"} className="p-0 w-10 h-10 text-white/75 hover:text-white"><Users size={20}/></Button>}
         </div>
-        <div ref={chatView} className="h-full flex flex-col flex-nowrap gap-2 pt-2 overflow-y-auto my-2 bottom-align">
+        <div ref={chatView} className="h-full flex flex-col flex-nowrap gap-2 pt-2 overflow-y-auto my-2 bottom-align scroll-view">
             <Button onClick={loadMore} variant={"outline"}>Load more</Button>
             {(messages instanceof Array) ? msgState.toReversed().map((m)=><div key={m.id} className="flex">
                 {userId === m.sender && <div className="flex-grow"></div>}

@@ -84,3 +84,20 @@ html, body{
 .bottom-align > :first-child{
   margin-top: auto !important;
 }
+
+.scroll-view::-webkit-scrollbar-track{
+  background: transparent;
+}
+
+.scroll-view::-webkit-scrollbar{
+  width: 4px;
+}
+
+.scroll-view::-webkit-scrollbar-thumb{
+  background: hsl(var(--muted));
+  border-radius: 2px;
+}
+
+.scroll-view::-webkit-scrollbar-thumb:hover{
+  filter: brightness(150%);
+}

@@ -21,7 +21,7 @@ export function Sidebar({id}: {id?: string}){
 			<div className="w-full"></div>
 			<NewChatDropdown/>
 		</div>
-		<div className={cn("h-full flex gap-1 flex-col overflow-y-auto", isLoading && "justify-center items-center")}>
+		<div className={cn("h-full flex gap-1 flex-col overflow-y-auto scroll-view", isLoading && "justify-center items-center")}>
 			{isLoading ? <LoaderCircle size={32} className="opacity-50 animate-spin"/> : 
 			data?.map((c)=><Button key={c.id} onClick={()=>{nav.push(`/chat/${c.id}`)}}
 			className={cn("gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white", id===c.id && "bg-secondary/50")}
