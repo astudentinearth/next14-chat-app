@@ -22,12 +22,15 @@ export default function InvitePopover({id}: {id: string}){
     })
     const create = async ()=> {
         const link = await createInvite(id, {expires: expire === "never" ? undefined : expire, singleUse: oneTime});
-        if(link.startsWith("Unauthorized")) {
+        if(link?.startsWith("Unauthorized")) {
             alert(link);
             return;
         }
-        navigator.clipboard.writeText(link);
-        await refetch();
+        if(link){
+            navigator.clipboard.writeText(link);
+            await refetch();
+        }
+
     }
     const calcRemaining = (date: Date) => {
         const diff = date.valueOf() - Date.now();

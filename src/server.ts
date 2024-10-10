@@ -2,10 +2,16 @@ import { createServer } from "node:http";
 import next from "next";
 import { Server } from "socket.io";
 import { parse } from "cookie";
+import {
+	joinLimiter,
+	messagesLimiter,
+	socketLimiter
+} from "./lib/message-limiter";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = 3000;
+
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
@@ -39,6 +45,10 @@ app.prepare().then(() => {
 						"Authentication error: no session ID was found in cookie."
 					)
 				);
+			const limit = await socketLimiter.consume(
+				`${auth_session}-${socket.handshake.address}`,
+				1
+			);
 			const req = await fetch(
 				`http://${hostname}:${port}/api/validate-auth`,
 				{
@@ -63,43 +73,56 @@ app.prepare().then(() => {
 	});
 	io.on("connection", (socket) => {
 		socket.on("join_channel", async (id) => {
-			console.log(`${socket.user?.username} is trying to join ${id}`);
-			const res = await fetch(
-				`http://${hostname}:${port}/api/can-user-join`,
-				{
-					body: JSON.stringify({
-						sessionId: socket.user?.sessionId,
-						channelId: id
-					}),
-					method: "POST"
-				}
-			);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const result: any = await res.json();
-			if (result.allow !== true) return result.error;
-			else {
-				socket.join(id);
-			}
+			if (!socket.user) return;
+			joinLimiter
+				.consume(socket.user.username, 1)
+				.then(async () => {
+					const res = await fetch(
+						`http://${hostname}:${port}/api/can-user-join`,
+						{
+							body: JSON.stringify({
+								sessionId: socket.user?.sessionId,
+								channelId: id
+							}),
+							method: "POST"
+						}
+					);
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const result: any = await res.json();
+					if (result.allow !== true) return result.error;
+					else {
+						socket.join(id);
+					}
+				})
+				.catch(() => {});
 		});
 		socket.on(
 			"send_message",
 			async (channelId: string, content: string) => {
-				const res = await fetch(
-					`http://${hostname}:${port}/api/send-message`,
-					{
-						body: JSON.stringify({
-							sessionId: socket.user?.sessionId,
-							channelId,
-							content
-						}),
-						method: "POST"
-					}
-				);
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const body: any = await res.json();
-				if (res.status === 200 && "msg" in body) {
-					io.to(channelId).emit("new_message", body.msg);
-				}
+				if (!socket.user) return;
+				messagesLimiter
+					.consume(socket.user?.username, 1)
+					.then(async () => {
+						const res = await fetch(
+							`http://${hostname}:${port}/api/send-message`,
+							{
+								body: JSON.stringify({
+									sessionId: socket.user?.sessionId,
+									channelId,
+									content
+								}),
+								method: "POST"
+							}
+						);
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const body: any = await res.json();
+						if (res.status === 200 && "msg" in body) {
+							io.to(channelId).emit("new_message", body.msg);
+						}
+					})
+					.catch(() => {
+						return "Slow down.";
+					});
 			}
 		);
 	});

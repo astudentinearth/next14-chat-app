@@ -2,25 +2,21 @@
 
 import { loadMessages } from "@/lib/chats/chat.actions"
 import { Channel, Message } from "@/lib/db/schema"
-import useEmptyInput from "@/lib/hooks/useEmptyInput"
 import { cn } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
-import { LoaderCircle, Send, Settings2, ShieldOff, Users } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { LoaderCircle, Send, ShieldOff } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import InvitePopover from "./invite-popover"
-import NamePopover from "./name-popover"
 import { MembersPopover } from "./members-popover"
+import NamePopover from "./name-popover"
 import { OptionsPopover } from "./options-popover"
 
-export default function ChatPanel({id, userId, username, hostname}: {id: string, userId: string, username: string, hostname:string}){
+export default function ChatPanel({id, userId, hostname}: {id: string, userId: string, username: string, hostname:string}){
     const msgbox = useRef<HTMLInputElement>(null);
     const chatView = useRef<HTMLDivElement>(null);
-    const {isEmpty} = useEmptyInput(msgbox);
-    const router = useRouter();
     const {data: channels, isLoading} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
     const channel = channels?.find((item)=>item.id===id);
     

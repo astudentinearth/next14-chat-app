@@ -15,46 +15,53 @@ import {
 	userTable
 } from "../db/schema";
 import { produce } from "immer";
+import { chatActionsLimiter, createChannelLimiter } from "../limiters";
 
 export async function createDirectMessageChannel(recipientUserId: string) {
-	const user = await getUser();
-	if (!user) return "Unauthorized: you are not logged in";
-	const recipient = await db.query.userTable.findFirst({
-		where: eq(userTable.id, recipientUserId)
-	});
-	if (!recipient) return "No user with this name exists";
-	const id = randomUUID();
-	await db.insert(channelsTable).values({
-		id,
-		owner: user.id,
-		creationTime: new Date(),
-		isDirectMessage: true,
-		participants: [user.id, recipientUserId],
-		dmUsernames: [user.username, recipient.username]
-	});
-	return redirect(`/chat/${id}`);
+	try {
+		const user = await getUser();
+		if (!user) return "Unauthorized: you are not logged in";
+		await createChannelLimiter.consume(user.id, 1);
+		const recipient = await db.query.userTable.findFirst({
+			where: eq(userTable.id, recipientUserId)
+		});
+		if (!recipient) return "No user with this name exists";
+		const id = randomUUID();
+		await db.insert(channelsTable).values({
+			id,
+			owner: user.id,
+			creationTime: new Date(),
+			isDirectMessage: true,
+			participants: [user.id, recipientUserId],
+			dmUsernames: [user.username, recipient.username]
+		});
+		return redirect(`/chat/${id}`);
+	} catch (error) {}
 }
 
 export async function loadDirectMessageChannel(recipientUsername: string) {
-	const user = await getUser();
-	if (!user) return "Unauthorized: you are not logged in";
-	if (user.username === recipientUsername) return "You can't text yourself";
-	const dest = await db.query.userTable.findFirst({
-		where: eq(userTable.username, recipientUsername)
-	});
-	if (!dest) return "No such user";
-	const recipientUserId: string = dest.id;
-	const channel = await db.query.channelsTable.findFirst({
-		where: and(
-			arrayContains(channelsTable.participants, [
-				user.id,
-				recipientUserId
-			]),
-			eq(channelsTable.isDirectMessage, true)
-		)
-	});
-	if (!channel) return await createDirectMessageChannel(recipientUserId);
-	else return redirect(`/chat/${channel.id}`);
+	try {
+		const user = await getUser();
+		if (!user) return "Unauthorized: you are not logged in";
+		if (user.username === recipientUsername)
+			return "You can't text yourself";
+		const dest = await db.query.userTable.findFirst({
+			where: eq(userTable.username, recipientUsername)
+		});
+		if (!dest) return "No such user";
+		const recipientUserId: string = dest.id;
+		const channel = await db.query.channelsTable.findFirst({
+			where: and(
+				arrayContains(channelsTable.participants, [
+					user.id,
+					recipientUserId
+				]),
+				eq(channelsTable.isDirectMessage, true)
+			)
+		});
+		if (!channel) return await createDirectMessageChannel(recipientUserId);
+		else return redirect(`/chat/${channel.id}`);
+	} catch (error) {}
 }
 
 /**
@@ -69,19 +76,22 @@ export async function loadDirectMessages(count?: number, after?: number) {}
  * @param name name of the channel
  */
 export async function createChannel(name: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized";
-	if (name.trim() === "") return "Channel name cannot empty";
-	const id = randomUUID();
-	await db.insert(channelsTable).values({
-		id,
-		name,
-		owner: user.id,
-		creationTime: new Date(),
-		isDirectMessage: false,
-		participants: [user.id]
-	});
-	return redirect(`/chat/${id}`);
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized";
+		if (name.trim() === "") return "Channel name cannot empty";
+		await createChannelLimiter.consume(user.id, 1);
+		const id = randomUUID();
+		await db.insert(channelsTable).values({
+			id,
+			name,
+			owner: user.id,
+			creationTime: new Date(),
+			isDirectMessage: false,
+			participants: [user.id]
+		});
+		return redirect(`/chat/${id}`);
+	} catch (error) {}
 }
 
 /**
@@ -94,21 +104,24 @@ export async function loadMessages(
 	count?: number,
 	after?: number
 ) {
-	const user = await getUser();
-	if (!user) return "Unauthorized: you are not logged in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (!channel) return "No such channel";
-	if (!channel.participants?.includes(user.id))
-		return "You are not a member of this conversation";
-	const messages = await db.query.messagesTable.findMany({
-		where: eq(messagesTable.channelId, channelId),
-		orderBy: desc(messagesTable.sentAt),
-		limit: count ?? 15,
-		offset: after
-	});
-	return messages;
+	try {
+		const user = await getUser();
+		if (!user) return "Unauthorized: you are not logged in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (!channel) return "No such channel";
+		if (!channel.participants?.includes(user.id))
+			return "You are not a member of this conversation";
+		const messages = await db.query.messagesTable.findMany({
+			where: eq(messagesTable.channelId, channelId),
+			orderBy: desc(messagesTable.sentAt),
+			limit: count ?? 15,
+			offset: after
+		});
+		return messages;
+	} catch (error) {}
 }
 
 /**
@@ -117,95 +130,110 @@ export async function loadMessages(
  * @param content contents of the message
  */
 export async function sendMessage(channelId: string, content: string) {
-	const user = await getUser();
-	if (!user) return "Unauthorized: you are not logged in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (!channel) return "No such channel";
-	if (!channel.participants?.includes(user.id))
-		return "You are not a member of this conversation";
-	const msg = {
-		id: randomUUID(),
-		channelId,
-		content,
-		sender: user.id,
-		sentAt: new Date(),
-		senderUsername: user.username
-	};
-	await db.insert(messagesTable).values(msg);
-	//io.to(channelId).emit("new_message", msg);
-	//TODO: Notify via socket
+	try {
+		const user = await getUser();
+		if (!user) return "Unauthorized: you are not logged in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (!channel) return "No such channel";
+		if (!channel.participants?.includes(user.id))
+			return "You are not a member of this conversation";
+		const msg = {
+			id: randomUUID(),
+			channelId,
+			content,
+			sender: user.id,
+			sentAt: new Date(),
+			senderUsername: user.username
+		};
+		await db.insert(messagesTable).values(msg);
+	} catch (error) {}
 }
 
 export async function getChannels() {
-	const user = await getUser();
-	if (!user) return [] as Channel[];
-	const result = await db.query.channelsTable.findMany({
-		where: arrayContains(channelsTable.participants, [user.id])
-	});
-	const final = produce(result, (draft) => {
-		for (const c of draft) {
-			if (!c.isDirectMessage || c.dmUsernames == null) continue;
-			const recipient = c.dmUsernames.filter((n) => n !== user.username);
-			if (recipient.length !== 1) continue;
-			c.name = `${recipient[0]}`;
-		}
-	});
-	return final;
+	try {
+		const user = await getUser();
+		if (!user) return [] as Channel[];
+		await chatActionsLimiter.consume(user.id, 1);
+		const result = await db.query.channelsTable.findMany({
+			where: arrayContains(channelsTable.participants, [user.id])
+		});
+		const final = produce(result, (draft) => {
+			for (const c of draft) {
+				if (!c.isDirectMessage || c.dmUsernames == null) continue;
+				const recipient = c.dmUsernames.filter(
+					(n) => n !== user.username
+				);
+				if (recipient.length !== 1) continue;
+				c.name = `${recipient[0]}`;
+			}
+		});
+		return final;
+	} catch (error) {}
 }
 
 export async function getChannelInfo(id: string) {
-	const user = await getUser();
-	if (!user) return null;
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, id)
-	});
-	if (!channel?.participants?.includes(user.id))
-		return "You are not a member of this conversation";
-	if (
-		channel != null &&
-		channel.isDirectMessage &&
-		channel.dmUsernames != null
-	) {
-		const recipient = channel.dmUsernames.filter(
-			(n) => n !== user.username
-		);
-		if (recipient.length !== 1) return channel;
-		return { ...channel, name: recipient[0] };
-	}
-	return channel ?? null;
+	try {
+		const user = await getUser();
+		if (!user) return null;
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, id)
+		});
+		if (!channel?.participants?.includes(user.id))
+			return "You are not a member of this conversation";
+		if (
+			channel != null &&
+			channel.isDirectMessage &&
+			channel.dmUsernames != null
+		) {
+			const recipient = channel.dmUsernames.filter(
+				(n) => n !== user.username
+			);
+			if (recipient.length !== 1) return channel;
+			return { ...channel, name: recipient[0] };
+		}
+		return channel ?? null;
+	} catch (error) {}
 }
 
 export async function getChannelParticipants(channelId: string) {
-	const user = await getUser();
-	if (!user) return null;
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (!channel) return "No such channel";
-	if (!channel.participants?.includes(user.id))
-		return "You are not a member of this conversation";
-	const users = await db.query.userTable.findMany({
-		where: inArray(userTable.id, channel.participants),
-		columns: { password_hash: false }
-	});
-	return users;
+	try {
+		const user = await getUser();
+		if (!user) return null;
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (!channel) return "No such channel";
+		if (!channel.participants?.includes(user.id))
+			return "You are not a member of this conversation";
+		const users = await db.query.userTable.findMany({
+			where: inArray(userTable.id, channel.participants),
+			columns: { password_hash: false }
+		});
+		return users;
+	} catch (error) {}
 }
 
 export async function renameChannel(id: string, newName: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, id)
-	});
-	if (channel?.owner !== user.id)
-		return "Unauthorized: you don't own this channel.";
-	await db
-		.update(channelsTable)
-		.set({ name: newName })
-		.where(eq(channelsTable.id, id));
-	return "Success";
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, id)
+		});
+		if (channel?.owner !== user.id)
+			return "Unauthorized: you don't own this channel.";
+		await db
+			.update(channelsTable)
+			.set({ name: newName })
+			.where(eq(channelsTable.id, id));
+		return "Success";
+	} catch (error) {}
 }
 
 interface InviteOpts {
@@ -223,24 +251,27 @@ const durations = {
 };
 
 export async function createInvite(channelId: string, opts?: InviteOpts) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (channel?.owner !== user.id)
-		return "Unauthorized: you don't own this channel.";
-	const id = randomUUID();
-	await db.insert(invitesTable).values({
-		id,
-		channelId,
-		oneTime: opts?.singleUse,
-		expires: opts?.expires
-			? new Date(Date.now() + durations[opts.expires])
-			: null
-	});
-	const host = headers().get("Host");
-	return `${host}/invite/${id}`;
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (channel?.owner !== user.id)
+			return "Unauthorized: you don't own this channel.";
+		const id = randomUUID();
+		await db.insert(invitesTable).values({
+			id,
+			channelId,
+			oneTime: opts?.singleUse,
+			expires: opts?.expires
+				? new Date(Date.now() + durations[opts.expires])
+				: null
+		});
+		const host = headers().get("Host");
+		return `${host}/invite/${id}`;
+	} catch (error) {}
 }
 
 export async function isValidInvite(invite: Invite) {
@@ -250,72 +281,86 @@ export async function isValidInvite(invite: Invite) {
 }
 
 export async function invalidateInvite(inviteId: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const invite = await db.query.invitesTable.findFirst({
-		where: eq(invitesTable.id, inviteId)
-	});
-	if (!invite) return "No such invite";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, invite.channelId)
-	});
-	if (!channel) return "No such channel";
-	if (channel.owner !== user.id) return "You don't own this channel";
-	await db.delete(invitesTable).where(eq(invitesTable.id, inviteId));
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const invite = await db.query.invitesTable.findFirst({
+			where: eq(invitesTable.id, inviteId)
+		});
+		if (!invite) return "No such invite";
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, invite.channelId)
+		});
+		if (!channel) return "No such channel";
+		if (channel.owner !== user.id) return "You don't own this channel";
+		await db.delete(invitesTable).where(eq(invitesTable.id, inviteId));
+	} catch (error) {}
 }
 
 export async function listInvites(channelId: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (channel?.owner !== user.id)
-		return "Unauthorized: you don't own this channel.";
-	const invites = await db.query.invitesTable.findMany({
-		where: eq(invitesTable.channelId, channelId)
-	});
-	return invites;
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (channel?.owner !== user.id)
+			return "Unauthorized: you don't own this channel.";
+		const invites = await db.query.invitesTable.findMany({
+			where: eq(invitesTable.channelId, channelId)
+		});
+		return invites;
+	} catch (error) {}
 }
 
 export async function joinChannel(inviteURL: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const inviteId = inviteURL.match(/((\w{4,12}-?)){5}/);
-	if (inviteId == null) return "Invalid invite: no invite ID";
-	const invite = await db.query.invitesTable.findFirst({
-		where: eq(invitesTable.id, inviteId[0])
-	});
-	if (!invite) return "Invalid invite: invite does not exist";
-	const valid = isValidInvite(invite);
-	if (!valid) return "Expired invite";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, invite.channelId)
-	});
-	if (!channel) return "Not found: channel does not exist";
-	if (channel.participants?.includes(user.id))
-		return redirect(`/chat/${channel.id}`); // user already in channel
-	await db
-		.update(channelsTable)
-		.set({ participants: [...(channel.participants ?? []), user.id] })
-		.where(eq(channelsTable.id, invite.channelId));
-	if (invite.oneTime)
-		await db.delete(invitesTable).where(eq(invitesTable.id, inviteId[0])); // delete invite if it was single use
-	return redirect(`/chat/${channel.id}`);
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const inviteId = inviteURL.match(/((\w{4,12}-?)){5}/);
+		if (inviteId == null) return "Invalid invite: no invite ID";
+		const invite = await db.query.invitesTable.findFirst({
+			where: eq(invitesTable.id, inviteId[0])
+		});
+		if (!invite) return "Invalid invite: invite does not exist";
+		const valid = isValidInvite(invite);
+		if (!valid) return "Expired invite";
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, invite.channelId)
+		});
+		if (!channel) return "Not found: channel does not exist";
+		if (channel.participants?.includes(user.id))
+			return redirect(`/chat/${channel.id}`); // user already in channel
+		await db
+			.update(channelsTable)
+			.set({ participants: [...(channel.participants ?? []), user.id] })
+			.where(eq(channelsTable.id, invite.channelId));
+		if (invite.oneTime)
+			await db
+				.delete(invitesTable)
+				.where(eq(invitesTable.id, inviteId[0])); // delete invite if it was single use
+		return redirect(`/chat/${channel.id}`);
+	} catch (error) {}
 }
 
 export async function leaveChannel(channelId: string) {
-	const user = await getUser();
-	if (user == null) return "Unauthorized: not signed in";
-	const channel = await db.query.channelsTable.findFirst({
-		where: eq(channelsTable.id, channelId)
-	});
-	if (!channel) return "Not found: channel does not exist";
-	await db
-		.update(channelsTable)
-		.set({
-			participants: channel.participants?.filter((n) => n !== user.id)
-		})
-		.where(eq(channelsTable.id, channelId));
-	return redirect("/");
+	try {
+		const user = await getUser();
+		if (user == null) return "Unauthorized: not signed in";
+		await chatActionsLimiter.consume(user.id, 1);
+		const channel = await db.query.channelsTable.findFirst({
+			where: eq(channelsTable.id, channelId)
+		});
+		if (!channel) return "Not found: channel does not exist";
+		await db
+			.update(channelsTable)
+			.set({
+				participants: channel.participants?.filter((n) => n !== user.id)
+			})
+			.where(eq(channelsTable.id, channelId));
+		return redirect("/");
+	} catch (error) {}
 }
