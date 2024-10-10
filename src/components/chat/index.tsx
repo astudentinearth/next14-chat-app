@@ -39,7 +39,7 @@ export default function ChatPanel({id, userId, hostname}: {id: string, userId: s
 
     
     
-    const socket = io(`http://${hostname}`);
+    const socket = io(`wss://${hostname}`);
     
      useEffect(()=>{
          socket.connect();
