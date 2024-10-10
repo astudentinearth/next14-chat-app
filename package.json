@@ -58,5 +58,10 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.1",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "cookie@<0.7.0": ">=0.7.0"
+    }
   }
 }
