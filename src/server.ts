@@ -45,10 +45,15 @@ app.prepare().then(() => {
 						"Authentication error: no session ID was found in cookie."
 					)
 				);
-			const limit = await socketLimiter.consume(
-				`${auth_session}-${socket.handshake.address}`,
-				1
-			);
+			try {
+				await socketLimiter.consume(
+					`${auth_session}-${socket.handshake.address}`,
+					1
+				);
+				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			} catch (error) {
+				return next(new Error("Too many socket messages sent."));
+			}
 			const req = await fetch(
 				`http://${hostname}:${port}/api/validate-auth`,
 				{

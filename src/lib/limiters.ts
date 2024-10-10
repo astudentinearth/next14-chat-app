@@ -1,4 +1,4 @@
-import { RateLimiterMemory } from "rate-limiter-flexible";
+import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 
 export const middlewareLimiter = new RateLimiterMemory({
 	duration: 60,
@@ -24,3 +24,16 @@ export const createChannelLimiter = new RateLimiterMemory({
 	duration: 180,
 	points: 18
 });
+
+export async function tryConsume(
+	limiter: RateLimiterAbstract,
+	key: string | number,
+	points: number
+) {
+	try {
+		await limiter.consume(key, points);
+	} catch {
+		return false;
+	}
+	return true;
+}
