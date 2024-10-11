@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
 import { LoaderCircle, Send, ShieldOff } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { io } from "socket.io-client"
+import { io, Socket } from "socket.io-client"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import InvitePopover from "./invite-popover"
@@ -14,7 +14,7 @@ import { MembersPopover } from "./members-popover"
 import NamePopover from "./name-popover"
 import { OptionsPopover } from "./options-popover"
 
-export default function ChatPanel({id, userId, hostname}: {id: string, userId: string, username: string, hostname:string}){
+export default function ChatPanel({id, userId, hostname, dev}: {id: string, userId: string, username: string, hostname:string, dev: boolean}){
     const msgbox = useRef<HTMLInputElement>(null);
     const chatView = useRef<HTMLDivElement>(null);
     const {data: channels, isLoading} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
@@ -37,9 +37,11 @@ export default function ChatPanel({id, userId, hostname}: {id: string, userId: s
         }
     }, [messages])
 
-    
-    
-    const socket = io(`wss://${hostname}`);
+    let socket: Socket;
+    if(dev){
+        socket = io(`http://${hostname}`);
+    }
+    else socket = io(`wss://${hostname}`);
     
      useEffect(()=>{
          socket.connect();
