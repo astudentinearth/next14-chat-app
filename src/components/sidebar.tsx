@@ -3,12 +3,12 @@
 import { getChannels } from "@/lib/chats/chat.actions"
 import { cn } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
-import { Hash, LoaderCircle, LogOut, UserRound } from "lucide-react"
+import { CircleUser, Hash, LoaderCircle, LogOut, Settings, UserRound } from "lucide-react"
 import { useRouter } from "next/navigation"
 import NewChatDropdown from "./dialog/new-chat-dropdown"
 import { Button } from "./ui/button"
 
-export function Sidebar({id}: {id?: string}){
+export function Sidebar({id, username}: {id?: string, username:string}){
 	const {data, isLoading, error} = useQuery({
 		queryFn: async ()=>{return await getChannels()},
 		queryKey: ["chat-list"]
@@ -23,11 +23,18 @@ export function Sidebar({id}: {id?: string}){
 		<div className={cn("h-full flex gap-1 flex-col overflow-y-auto scroll-view", isLoading && "justify-center items-center")}>
 			{isLoading ? <LoaderCircle size={32} className="opacity-50 animate-spin"/> : 
 			Array.isArray(data) && data.map((c)=><Button key={c.id} onClick={()=>{nav.push(`/chat/${c.id}`)}}
-			className={cn("gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white", id===c.id && "bg-secondary/50")}
+			className={cn("gap-2 justify-start rounded-xl pl-2 w-full h-10 text-white/75 hover:text-white flex-shrink-0", id===c.id && "bg-secondary/50")}
 			variant={"ghost"}>{c.isDirectMessage ? <UserRound size={20}/> : <Hash size={20}/>}{c.name}</Button>)
 			}
 			
 		</div>
-		<Button className="gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white" onClick={()=>{nav.push("/api/logout")}} variant={"ghost"}><LogOut size={20}/>Sign out</Button>
+		<Button className="gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white flex-shrink-0" onClick={()=>{nav.push("/settings")}} variant={"ghost"}><Settings size={20}/>Account and settings</Button>
+		<div className="flex gap-2 items-center pl-2 text-white/75">
+			<CircleUser className="flex-shrink-0" size={20}/>
+			<span className="flex-shrink-0 overflow-hidden text-ellipsis whitespace-nowrap w-[60%]">{username}</span>
+			<div className="w-full"></div>
+			<Button className="gap-2 justify-center rounded-xl w-10 h-10 p-0  text-white/75 hover:text-destructive-foreground hover:bg-destructive/50 flex-shrink-0" onClick={()=>{nav.push("/api/logout")}} variant={"ghost"}><LogOut size={20}/></Button>
+		</div>
+		
 	</div>
 }

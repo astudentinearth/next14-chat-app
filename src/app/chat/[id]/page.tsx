@@ -12,7 +12,7 @@ export default async function ChatPage({params}: {params: {id: string}}) {
   if(!hostname) return redirect("/login");
   return (
     <div className="w-full h-full absolute flex p-2 gap-2">
-      <Sidebar id={params.id}/>
+      <Sidebar id={params.id} username={user.username}/>
       {user == null ? <></> : <ChatPanel dev={dev} id={params.id} userId={user.id} hostname={hostname} username={user.username}/>}
     </div>
   );
