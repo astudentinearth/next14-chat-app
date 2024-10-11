@@ -132,8 +132,9 @@ export async function loadMessages(
  * @param content contents of the message
  */
 export async function sendMessage(channelId: string, content: string) {
-	if (content.length > 400)
+	if (content.trim().length > 400)
 		return "Message should not exceed 400 characters.";
+	if (content.trim().length == 0) return "Message cannot be empty.";
 	const user = await getUser();
 	if (!user) return "Unauthorized: you are not logged in";
 	const allowed = await tryConsume(createChannelLimiter, user.id, 1);
