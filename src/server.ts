@@ -105,6 +105,7 @@ app.prepare().then(() => {
 			"send_message",
 			async (channelId: string, content: string) => {
 				if (!socket.user) return;
+				if (content.length > 400) return;
 				messagesLimiter
 					.consume(socket.user?.username, 1)
 					.then(async () => {

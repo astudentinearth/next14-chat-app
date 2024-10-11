@@ -132,6 +132,8 @@ export async function loadMessages(
  * @param content contents of the message
  */
 export async function sendMessage(channelId: string, content: string) {
+	if (content.length > 400)
+		return "Message should not exceed 400 characters.";
 	const user = await getUser();
 	if (!user) return "Unauthorized: you are not logged in";
 	const allowed = await tryConsume(createChannelLimiter, user.id, 1);
@@ -216,6 +218,7 @@ export async function getChannelParticipants(channelId: string) {
 }
 
 export async function renameChannel(id: string, newName: string) {
+	if (newName.length > 80) return;
 	const user = await getUser();
 	if (user == null) return "Unauthorized: not signed in";
 	const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
