@@ -13,8 +13,9 @@ import InvitePopover from "./invite-popover"
 import { MembersPopover } from "./members-popover"
 import NamePopover from "./name-popover"
 import { OptionsPopover } from "./options-popover"
+import { Sidebar } from "../sidebar"
 
-export default function ChatPanel({id, userId, hostname, dev}: {id: string, userId: string, username: string, hostname:string, dev: boolean}){
+export default function ChatPanel({id, userId, hostname, dev, username}: {id: string, userId: string, username: string, hostname:string, dev: boolean}){
     const msgbox = useRef<HTMLInputElement>(null);
     const chatView = useRef<HTMLDivElement>(null);
     const {data: channels, isLoading} = useQuery<Channel[] | undefined>({queryKey: ["chat-list"]});
@@ -82,6 +83,7 @@ export default function ChatPanel({id, userId, hostname, dev}: {id: string, user
             </div> : 
             <>
                 <div className="flex gap-2 [&>button]:flex-shrink-0 ">
+                    <Sidebar id={id} username={username} mobile/>
                     {channel.isDirectMessage ? <></> : <OptionsPopover channel={channel}/>}
                     {channel?.isDirectMessage || channel.owner !==userId ? <></> : <InvitePopover id={id}/>}
                     <NamePopover name={channel?.name ?? ""} isLoading={isLoading} id={id}/>
