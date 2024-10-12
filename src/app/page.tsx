@@ -7,7 +7,7 @@ export default async function Home() {
   if(!user) return redirect("/login")
   return (
     <div className="w-full h-full absolute flex p-2 gap-2">
-      <Sidebar username={user.username}/>
+      <Sidebar username={user.username} home/>
     </div>
   );
 }

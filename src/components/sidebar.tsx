@@ -9,8 +9,8 @@ import NewChatDropdown from "./dialog/new-chat-dropdown"
 import { Button } from "./ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet"
 
-export function Sidebar({id, username, mobile, settings}: {id?: string, username:string, mobile?: boolean, settings?: boolean}){
-	const {data, isLoading, error} = useQuery({
+export function Sidebar({id, username, mobile, settings, home}: {id?: string, username:string, mobile?: boolean, settings?: boolean, home?:boolean}){
+	const {data, isLoading} = useQuery({
 		queryFn: async ()=>{return await getChannels()},
 		queryKey: ["chat-list"]
 	});
@@ -51,7 +51,7 @@ export function Sidebar({id, username, mobile, settings}: {id?: string, username
 			</div>
 		</SheetContent>
 	</Sheet> : 
-	<div className="h-full bg-neutral-900 w-72 rounded-2xl sm:flex flex-col p-2 gap-1 border border-border flex-shrink-0 hidden">
+	<div className={cn("h-full bg-neutral-900 w-72 rounded-2xl sm:flex flex-col p-2 gap-1 border border-border flex-shrink-0", !home && "hidden" )}>
 		<SidebarContent/>
 	</div>
 }
