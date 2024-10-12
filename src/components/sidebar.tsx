@@ -17,7 +17,7 @@ export function Sidebar({id, username, mobile, settings, home}: {id?: string, us
 	
 	const nav = useRouter();
 
-	const SidebarContent = () => <>
+	const SidebarContent = () => <div className="h-full flex flex-col">
 		<div className="flex items-center flex-shrink-0">
 			<h1 className="font-bold text-xl pl-2 flex-shrink-0 opacity-85">Chat</h1>
 			<div className="w-full"></div>
@@ -38,7 +38,7 @@ export function Sidebar({id, username, mobile, settings, home}: {id?: string, us
 			<div className="w-full"></div>
 			<Button className="gap-2 justify-center rounded-xl w-10 h-10 p-0  text-white/75 hover:text-destructive-foreground hover:bg-destructive/50 flex-shrink-0" onClick={()=>{nav.push("/api/logout")}} variant={"ghost"}><LogOut size={20}/></Button>
 		</div>
-	</>
+	</div>
 
 	return mobile ? 
 	<Sheet>
@@ -51,7 +51,7 @@ export function Sidebar({id, username, mobile, settings, home}: {id?: string, us
 			</div>
 		</SheetContent>
 	</Sheet> : 
-	<div className={cn("h-full bg-neutral-900 w-72 rounded-2xl sm:flex flex-col p-2 gap-1 border border-border flex-shrink-0", !home && "hidden" )}>
+	<div className={cn("h-full bg-neutral-900 w-72 rounded-2xl sm:flex flex-col p-2 gap-1 border border-border flex-shrink-0", !home && "hidden", home && "w-full sm:w-72" )}>
 		<SidebarContent/>
 	</div>
 }
