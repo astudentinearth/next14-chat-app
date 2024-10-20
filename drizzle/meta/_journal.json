@@ -43,6 +43,20 @@
       "when": 1727625904727,
       "tag": "0005_bumpy_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1729451332064,
+      "tag": "0006_chief_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1729451354990,
+      "tag": "0007_fair_whistler",
+      "breakpoints": true
     }
   ]
 }

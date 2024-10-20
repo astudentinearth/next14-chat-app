@@ -1,3 +1,4 @@
+import DeleteAccountDialog from "@/components/dialog/delete-account-dialog";
 import { Sidebar } from "@/components/sidebar";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -12,7 +13,7 @@ export default async function SettingsPage(){
                 <Sidebar username={user.username} mobile settings/>
                 <h1 className="text-bold text-3xl">Settings</h1>
             </div>
-            <h2 className="text-semibold text-xl">Work in progress</h2>
+            <DeleteAccountDialog/>
         </div>
     </div>
 

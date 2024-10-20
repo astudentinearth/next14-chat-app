@@ -32,7 +32,7 @@ export function Sidebar({id, username, mobile, settings, home}: {id?: string, us
 			
 		</div>
 		<Button className={cn("gap-2 justify-start rounded-xl pl-2 h-10 text-white/75 hover:text-white flex-shrink-0", settings && "bg-secondary/50")} onClick={()=>{nav.push("/settings")}} variant={"ghost"}><Settings size={20}/>Account and settings</Button>
-		<div className="flex gap-2 items-center pl-2 text-white/75">
+		<div className="flex gap-2 items-center pl-2 pt-2 text-white/75">
 			<CircleUser className="flex-shrink-0" size={20}/>
 			<span className="flex-shrink-0 overflow-hidden text-ellipsis whitespace-nowrap w-[60%]">{username}</span>
 			<div className="w-full"></div>
