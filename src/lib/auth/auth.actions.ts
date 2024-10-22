@@ -19,6 +19,9 @@ const hashOpts = {
     parallelism: 1
 };
 
+//TODO: lucia is deprecated. MOVE AWAY FROM IT
+//TODO: Move database logic over to the database actions file
+
 export async function signup(username: string, password: string) {
     try {
         await signupLimiter.consume(
