@@ -13,6 +13,9 @@ export default async function SettingsPage(){
                 <Sidebar username={user.username} mobile settings/>
                 <h1 className="text-bold text-3xl">Settings</h1>
             </div>
+            <div className="h-[1px] bg-muted w-full"></div>
+            <h2 className="text-xl">Account deletion</h2>
+            <p>You can remove yourself from our servers immediately. <strong>This action is not reversible. All messages, channels and invites that belong to you will be deleted.</strong></p>
             <DeleteAccountDialog/>
         </div>
     </div>

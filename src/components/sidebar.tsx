@@ -43,7 +43,7 @@ export function Sidebar({id, username, mobile, settings, home}: {id?: string, us
 	return mobile ? 
 	<Sheet>
 		<SheetTrigger asChild>
-			<Button variant={"topbar"} className="w-10 h-10 p-0 sm:hidden"><Menu/></Button>
+			<Button variant={"topbar"} className={cn("w-10 h-10 p-0 sm:hidden", mobile && "drop-shadow-none bg-transparent hover:bg-secondary border-none")}><Menu/></Button>
 		</SheetTrigger>
 		<SheetContent side={"left"} className="w-72 p-2">
 			<div className="flex gap-2 flex-col h-full">

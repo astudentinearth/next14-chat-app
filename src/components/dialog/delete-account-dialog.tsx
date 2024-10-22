@@ -18,7 +18,7 @@ export default function DeleteAccountDialog(){
     }, [input]);
     return <Dialog>
         <DialogTrigger asChild>
-            <Button variant={"secondary"}>Delete Account</Button>
+            <Button className="w-fit" variant={"secondary"}>Delete Account</Button>
         </DialogTrigger>
         <DialogContent>
             <DialogTitle>Delete account</DialogTitle>
