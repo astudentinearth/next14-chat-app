@@ -2,6 +2,7 @@ import DeleteAccountDialog from "@/components/dialog/delete-account-dialog";
 import { Sidebar } from "@/components/sidebar";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { About } from "./about";
 
 export default async function SettingsPage(){
     const user = await getUser();
@@ -17,6 +18,8 @@ export default async function SettingsPage(){
             <h2 className="text-xl">Account deletion</h2>
             <p>You can remove yourself from our servers immediately. <strong>This action is not reversible. All messages, channels and invites that belong to you will be deleted.</strong></p>
             <DeleteAccountDialog/>
+            <div className="h-8"></div>
+            <About/>
         </div>
     </div>
 
