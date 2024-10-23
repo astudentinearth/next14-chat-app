@@ -1,20 +1,11 @@
 "use server";
 
-import { randomUUID } from "crypto";
-import { and, arrayContains, desc, eq } from "drizzle-orm";
 import { produce } from "immer";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "../auth";
-import { db } from "../db";
 import { DatabaseActions } from "../db/actions";
-import {
-    Channel,
-    channelsTable,
-    Invite,
-    invitesTable,
-    messagesTable
-} from "../db/schema";
+import { Channel, Invite } from "../db/schema";
 import {
     chatActionsLimiter,
     createChannelLimiter,
@@ -28,15 +19,14 @@ export async function createDirectMessageChannel(recipientUserId: string) {
     if (!allowed) return "Too many requests";
     const recipient = await DatabaseActions.findUserById(recipientUserId);
     if (!recipient) return "No user with this name exists";
-    const id = randomUUID();
-    await db.insert(channelsTable).values({
-        id,
+    const { id, error } = await DatabaseActions.createChannel({
         owner: user.id,
         creationTime: new Date(),
         isDirectMessage: true,
         participants: [user.id, recipientUserId],
         dmUsernames: [user.username, recipient.username]
     });
+    if (!id) return error;
     return redirect(`/chat/${id}`);
 }
 
@@ -49,15 +39,10 @@ export async function loadDirectMessageChannel(recipientUsername: string) {
     const dest = await DatabaseActions.findUserByName(recipientUsername);
     if (!dest) return "No such user";
     const recipientUserId: string = dest.id;
-    const channel = await db.query.channelsTable.findFirst({
-        where: and(
-            arrayContains(channelsTable.participants, [
-                user.id,
-                recipientUserId
-            ]),
-            eq(channelsTable.isDirectMessage, true)
-        )
-    });
+    const channel = await DatabaseActions.findDirectMessageChannel([
+        user.id,
+        recipientUserId
+    ]);
     if (!channel) return await createDirectMessageChannel(recipientUserId);
     else return redirect(`/chat/${channel.id}`);
 }
@@ -79,16 +64,14 @@ export async function createChannel(name: string) {
     const allowed = await tryConsume(createChannelLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
     if (name.trim() === "") return "Channel name cannot empty";
-    await createChannelLimiter.consume(user.id, 1);
-    const id = randomUUID();
-    await db.insert(channelsTable).values({
-        id,
+    const { id, error } = await DatabaseActions.createChannel({
         name,
         owner: user.id,
         creationTime: new Date(),
         isDirectMessage: false,
         participants: [user.id]
     });
+    if (!id) return error;
     return redirect(`/chat/${id}`);
 }
 
@@ -106,19 +89,11 @@ export async function loadMessages(
     if (!user) return "Unauthorized: you are not logged in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    await chatActionsLimiter.consume(user.id, 1);
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (!channel) return "No such channel";
     if (!channel.participants?.includes(user.id))
         return "You are not a member of this conversation";
-    const messages = await db.query.messagesTable.findMany({
-        where: eq(messagesTable.channelId, channelId),
-        orderBy: desc(messagesTable.sentAt),
-        limit: count ?? 15,
-        offset: after
-    });
+    const messages = await DatabaseActions.getMessages(channelId, count, after);
     return messages;
 }
 
@@ -135,21 +110,18 @@ export async function sendMessage(channelId: string, content: string) {
     if (!user) return "Unauthorized: you are not logged in";
     const allowed = await tryConsume(createChannelLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (!channel) return "No such channel";
     if (!channel.participants?.includes(user.id))
         return "You are not a member of this conversation";
     const msg = {
-        id: randomUUID(),
         channelId,
         content,
         sender: user.id,
         sentAt: new Date(),
         senderUsername: user.username
     };
-    await db.insert(messagesTable).values(msg);
+    await DatabaseActions.createMessage(msg);
 }
 
 export async function getChannels() {
@@ -157,9 +129,7 @@ export async function getChannels() {
     if (!user) return [] as Channel[];
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const result = await db.query.channelsTable.findMany({
-        where: arrayContains(channelsTable.participants, [user.id])
-    });
+    const result = await DatabaseActions.getUserChannels(user.id);
     const final = produce(result, (draft) => {
         for (const c of draft) {
             if (!c.isDirectMessage || c.dmUsernames == null) continue;
@@ -176,9 +146,7 @@ export async function getChannelInfo(id: string) {
     if (!user) return null;
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, id)
-    });
+    const channel = await DatabaseActions.findChannelById(id);
     if (!channel?.participants?.includes(user.id))
         return "You are not a member of this conversation";
     if (
@@ -200,10 +168,7 @@ export async function getChannelParticipants(channelId: string) {
     if (!user) return null;
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    await chatActionsLimiter.consume(user.id, 1);
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (!channel) return "No such channel";
     if (!channel.participants?.includes(user.id))
         return "You are not a member of this conversation";
@@ -217,15 +182,10 @@ export async function renameChannel(id: string, newName: string) {
     if (user == null) return "Unauthorized: not signed in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, id)
-    });
+    const channel = await DatabaseActions.findChannelById(id);
     if (channel?.owner !== user.id)
         return "Unauthorized: you don't own this channel.";
-    await db
-        .update(channelsTable)
-        .set({ name: newName })
-        .where(eq(channelsTable.id, id));
+    await DatabaseActions.renameChannel(id, newName);
     return "Success";
 }
 
@@ -248,20 +208,17 @@ export async function createInvite(channelId: string, opts?: InviteOpts) {
     if (user == null) return "Unauthorized: not signed in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (channel?.owner !== user.id)
         return "Unauthorized: you don't own this channel.";
-    const id = randomUUID();
-    await db.insert(invitesTable).values({
-        id,
+    const { id, error } = await DatabaseActions.createInvite({
         channelId,
         oneTime: opts?.singleUse,
         expires: opts?.expires
             ? new Date(Date.now() + durations[opts.expires])
             : null
     });
+    if (error) return error;
     const host = headers().get("Host");
     return `${host}/invite/${id}`;
 }
@@ -277,16 +234,12 @@ export async function invalidateInvite(inviteId: string) {
     if (user == null) return "Unauthorized: not signed in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const invite = await db.query.invitesTable.findFirst({
-        where: eq(invitesTable.id, inviteId)
-    });
+    const invite = await DatabaseActions.findInviteById(inviteId);
     if (!invite) return "No such invite";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, invite.channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(invite.channelId);
     if (!channel) return "No such channel";
     if (channel.owner !== user.id) return "You don't own this channel";
-    await db.delete(invitesTable).where(eq(invitesTable.id, inviteId));
+    await DatabaseActions.invalidateInvite(inviteId);
 }
 
 export async function listInvites(channelId: string) {
@@ -294,14 +247,10 @@ export async function listInvites(channelId: string) {
     if (user == null) return "Unauthorized: not signed in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (channel?.owner !== user.id)
         return "Unauthorized: you don't own this channel.";
-    const invites = await db.query.invitesTable.findMany({
-        where: eq(invitesTable.channelId, channelId)
-    });
+    const invites = await DatabaseActions.findChannelInvites(channelId);
     return invites;
 }
 
@@ -312,24 +261,16 @@ export async function joinChannel(inviteURL: string) {
     if (!allowed) return "Too many requests";
     const inviteId = inviteURL.match(/((\w{4,12}-?)){5}/);
     if (inviteId == null) return "Invalid invite: no invite ID";
-    const invite = await db.query.invitesTable.findFirst({
-        where: eq(invitesTable.id, inviteId[0])
-    });
+    const invite = await DatabaseActions.findInviteById(inviteId[0]);
     if (!invite) return "Invalid invite: invite does not exist";
     const valid = isValidInvite(invite);
     if (!valid) return "Expired invite";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, invite.channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(invite.channelId);
     if (!channel) return "Not found: channel does not exist";
     if (channel.participants?.includes(user.id))
         return redirect(`/chat/${channel.id}`); // user already in channel
-    await db
-        .update(channelsTable)
-        .set({ participants: [...(channel.participants ?? []), user.id] })
-        .where(eq(channelsTable.id, invite.channelId));
-    if (invite.oneTime)
-        await db.delete(invitesTable).where(eq(invitesTable.id, inviteId[0])); // delete invite if it was single use
+    await DatabaseActions.addParticipant(user.id, channel);
+    if (invite.oneTime) await DatabaseActions.invalidateInvite(inviteId[0]); // delete invite if it was single use
     return redirect(`/chat/${channel.id}`);
 }
 
@@ -338,15 +279,8 @@ export async function leaveChannel(channelId: string) {
     if (user == null) return "Unauthorized: not signed in";
     const allowed = await tryConsume(chatActionsLimiter, user.id, 1);
     if (!allowed) return "Too many requests";
-    const channel = await db.query.channelsTable.findFirst({
-        where: eq(channelsTable.id, channelId)
-    });
+    const channel = await DatabaseActions.findChannelById(channelId);
     if (!channel) return "Not found: channel does not exist";
-    await db
-        .update(channelsTable)
-        .set({
-            participants: channel.participants?.filter((n) => n !== user.id)
-        })
-        .where(eq(channelsTable.id, channelId));
+    await DatabaseActions.removeParticipant(user.id, channel);
     return redirect("/");
 }
