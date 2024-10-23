@@ -8,6 +8,7 @@ import {
     userTable
 } from "./schema";
 import { and, arrayContains, eq } from "drizzle-orm";
+import { generateIdFromEntropySize } from "lucia";
 
 export class DatabaseActions {
     static async deleteAccount(userID: string) {
@@ -55,5 +56,32 @@ export class DatabaseActions {
 
         // Remove the user from user table
         await db.delete(userTable).where(eq(userTable.id, userID));
+    }
+
+    static async findUserById(id: string) {
+        return await db.query.userTable.findFirst({
+            where: eq(userTable.id, id)
+        });
+    }
+
+    static async findUserByName(username: string) {
+        return await db.query.userTable.findFirst({
+            where: eq(userTable.username, username)
+        });
+    }
+
+    static async createUser(
+        username: string,
+        password_hash: string
+    ): Promise<{ id?: string; error?: string }> {
+        const userId = generateIdFromEntropySize(10); //TODO: Use a better id generator without lucia
+        const existing = await db.query.userTable.findFirst({
+            where: eq(userTable.username, username)
+        });
+        if (existing != null) return { error: "User already exists" };
+        await db
+            .insert(userTable)
+            .values({ id: userId, username, password_hash });
+        return { id: userId };
     }
 }

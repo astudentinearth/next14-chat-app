@@ -1,16 +1,12 @@
 "use server";
 
 import { hash, verify } from "@node-rs/argon2";
-import { LoginSchema, SignupSchema } from "./validation";
-import { generateIdFromEntropySize } from "lucia";
-import { db } from "../db";
-import { eq } from "drizzle-orm";
-import { userTable } from "../db/schema";
-import { getUser, lucia } from ".";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { loginLimiter, signupLimiter } from "../limiters";
+import { getUser, lucia } from ".";
 import { DatabaseActions } from "../db/actions";
+import { loginLimiter, signupLimiter } from "../limiters";
+import { LoginSchema, SignupSchema } from "./validation";
 
 const hashOpts = {
     memoryCost: 19456,
@@ -41,13 +37,14 @@ export async function signup(username: string, password: string) {
     });
     if (parsed.error) return parsed.error.message;
     const password_hash = await hash(parsed.data.password, hashOpts);
-    const userId = generateIdFromEntropySize(10);
-    const existing = await db.query.userTable.findFirst({
-        where: eq(userTable.username, parsed.data.username)
-    });
+    const existing = await DatabaseActions.findUserByName(parsed.data.username);
     if (existing != null) return "User already exists!";
-    await db.insert(userTable).values({ id: userId, username, password_hash });
-    const session = await lucia.createSession(userId, {});
+    const { id, error } = await DatabaseActions.createUser(
+        username,
+        password_hash
+    );
+    if (error || id == null) return error;
+    const session = await lucia.createSession(id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     cookies().set(
         sessionCookie.name,
@@ -71,9 +68,7 @@ export async function login(username: string, password: string) {
     }
     const parsed = LoginSchema.safeParse({ username, password });
     if (parsed.error) return parsed.error.message;
-    const user = await db.query.userTable.findFirst({
-        where: eq(userTable.username, parsed.data.username)
-    });
+    const user = await DatabaseActions.findUserByName(parsed.data.username);
     if (!user) return "No such user";
     const isValidPassword = verify(
         user.password_hash,
