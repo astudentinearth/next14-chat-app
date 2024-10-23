@@ -7,7 +7,7 @@ import {
     sessionTable,
     userTable
 } from "./schema";
-import { and, arrayContains, eq } from "drizzle-orm";
+import { and, arrayContains, eq, inArray } from "drizzle-orm";
 import { generateIdFromEntropySize } from "lucia";
 
 export class DatabaseActions {
@@ -83,5 +83,12 @@ export class DatabaseActions {
             .insert(userTable)
             .values({ id: userId, username, password_hash });
         return { id: userId };
+    }
+
+    static async findUsersByIds(ids: string[]) {
+        await db.query.userTable.findMany({
+            where: inArray(userTable.id, ids),
+            columns: { password_hash: false }
+        });
     }
 }
