@@ -91,7 +91,7 @@ export class DatabaseActions {
     }
 
     static async findUsersByIds(ids: string[]) {
-        await db.query.userTable.findMany({
+        return await db.query.userTable.findMany({
             where: inArray(userTable.id, ids),
             columns: { password_hash: false }
         });
