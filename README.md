@@ -1,3 +1,6 @@
+> [!WARNING]
+> This project is no longer maintained.
+
 # 🗨️ Next 14 real time chat
 
 Real time chat app built with Next 14, shadcn-ui, socket.io, Drizzle ORM and lucia-auth
